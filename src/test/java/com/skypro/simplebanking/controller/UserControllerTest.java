@@ -130,7 +130,7 @@ public class UserControllerTest {
         assertEquals(usersBefore,usersAfter-numberOfCreatedUsers);
     }
 
-    @DisplayName("Неуспешная попытка получения создания существующего пользователя пользователем с ролью ADMIN.")
+    @DisplayName("Неуспешная попытка создания существующего пользователя пользователем с ролью ADMIN.")
     @Test
     @WithMockUser(roles = "ADMIN")
     void createUser_existedUser_withAdminRole_thenUserNotCreated() throws Exception {
