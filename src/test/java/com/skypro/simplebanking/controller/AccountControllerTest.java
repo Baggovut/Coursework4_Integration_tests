@@ -293,11 +293,11 @@ public class AccountControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    @DisplayName("Заблокированное снятие средств со счёте из-за неправильного ID акаунта для пользователя с ролью USER.")
+    @DisplayName("Заблокированное снятие средств со счёта из-за неправильного ID акаунта для пользователя с ролью USER.")
     @Test
     void withdrawFromAccount_postRequestWithWrongAccountId_withUserRole_thenDepositNotWithdrawn() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
-        long id = account.getId()+(new Random().nextLong(100,Long.MAX_VALUE));
+        long id = account.getId()+(new Random().nextLong(AccountCurrency.values().length,Long.MAX_VALUE));
         long validWithdrawalAmount = account.getAmount()/100;
 
         BalanceChangeRequest balanceChangeRequest = new BalanceChangeRequest();
