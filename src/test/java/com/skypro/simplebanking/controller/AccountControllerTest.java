@@ -319,7 +319,7 @@ public class AccountControllerTest {
                 );
     }
 
-    @DisplayName("Заблокированное снятие средств со счёта из-за неправильного ID акаунта для пользователя с ролью USER.")
+    @DisplayName("Заблокированное снятие средств со счёта из-за неправильного ID аккаунта для пользователя с ролью USER.")
     @Test
     void withdrawFromAccount_postRequestWithWrongAccountId_withUserRole_thenDepositNotWithdrawn() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
