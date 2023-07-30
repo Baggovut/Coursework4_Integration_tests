@@ -28,7 +28,7 @@ public class UserUtils {
 
         for (int userNumber = 0;userNumber < maxUsers;userNumber++){
             User currentUser = new User();
-            long randomAmount = new Random().nextLong(1, 1_000_000L);
+            long randomAmount = new Random().nextLong(1000, 1_000_000L);
 
             currentUser.setUsername(uniqueUsernames.get(userNumber));
             currentUser.setPassword(passwordEncoder.encode(faker.internet().password()));

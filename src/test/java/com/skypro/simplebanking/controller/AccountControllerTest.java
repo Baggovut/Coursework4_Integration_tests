@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skypro.simplebanking.SimpleBankingApplication;
+import com.skypro.simplebanking.dto.AccountDTO;
 import com.skypro.simplebanking.dto.BalanceChangeRequest;
 import com.skypro.simplebanking.entity.Account;
 import com.skypro.simplebanking.entity.AccountCurrency;
@@ -107,10 +108,12 @@ public class AccountControllerTest {
     void getUserAccount_getRequest_withUserRole_thenJsonVariable() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
         long id = account.getId();
+        String expectedJson = objectMapper.writeValueAsString(AccountDTO.from(account));
 
         mockMvc.perform(get("/account/{id}",id))
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedJson));
     }
 
     @DisplayName("Запрос информации об аккаунте пользователем с ролью ADMIN.")
@@ -124,15 +127,22 @@ public class AccountControllerTest {
 
         mockMvc.perform(get("/account/{id}",id))
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 
-    @DisplayName("Попополнить собственный счёт пользователем с ролью USER.")
+    @DisplayName("Пополнение собственного счёта пользователем с ролью USER.")
     @Test
     void depositToAccount_postRequest_withUserRole_thenDepositReplenished() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
         long id = account.getId();
         long validDepositAmount = new Random().nextLong(1,Long.MAX_VALUE);
+        AccountDTO expectedAccount = new AccountDTO(
+                account.getId(),
+                (account.getAmount() + validDepositAmount),
+                account.getAccountCurrency()
+        );
+        String expectedJson = objectMapper.writeValueAsString(expectedAccount);
 
         BalanceChangeRequest balanceChangeRequest = new BalanceChangeRequest();
         balanceChangeRequest.setAmount(validDepositAmount);
@@ -144,10 +154,11 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedJson));
     }
 
-    @DisplayName("Попополнить собственный счёт пользователем с ролью ADMIN.")
+    @DisplayName("Заблокированное пополнение собственного счёта пользователем с ролью ADMIN.")
     @Test
     void depositToAccount_postRequest_withAdminRole_thenDepositNotReplenished() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
@@ -167,7 +178,8 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 
     @DisplayName("Заблокированное пополнение депозита из-за отрицательной величины пополнения пользователем с ролью USER.")
@@ -187,14 +199,15 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$").value("Amount should be more than 0"));
     }
 
-    @DisplayName("Заблокированное пополнение депозита из-за неправильного ID акаунта пользователем с ролью USER.")
+    @DisplayName("Заблокированное пополнение депозита из-за неправильного ID аккаунта пользователем с ролью USER.")
     @Test
     void depositToAccount_postRequestWithWrongAccountId_withUserRole_thenDepositNotReplenished() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
-        long id = account.getId()+(new Random().nextLong(AccountCurrency.values().length,Long.MAX_VALUE));
+        long wrongId = account.getId()+(new Random().nextLong(AccountCurrency.values().length,Long.MAX_VALUE));
         long depositAmount = new Random().nextLong(1,Long.MAX_VALUE);
 
         BalanceChangeRequest balanceChangeRequest = new BalanceChangeRequest();
@@ -202,12 +215,13 @@ public class AccountControllerTest {
 
         String requestJson = objectMapper.writeValueAsString(balanceChangeRequest);
 
-        mockMvc.perform(post("/account/deposit/{id}",id)
+        mockMvc.perform(post("/account/deposit/{id}",wrongId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 
     @DisplayName("Снятие средств с собственного счёта пользователем с ролью USER.")
@@ -216,6 +230,12 @@ public class AccountControllerTest {
         Account account = AccountUtils.getAccount(fromUser,accounts);
         long id = account.getId();
         long validWithdrawalAmount = account.getAmount()/100;
+        AccountDTO expectedAccount = new AccountDTO(
+                account.getId(),
+                (account.getAmount() - validWithdrawalAmount),
+                account.getAccountCurrency()
+        );
+        String expectedJson = objectMapper.writeValueAsString(expectedAccount);
 
         BalanceChangeRequest balanceChangeRequest = new BalanceChangeRequest();
         balanceChangeRequest.setAmount(validWithdrawalAmount);
@@ -227,7 +247,8 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedJson));
     }
 
     @DisplayName("Снятие средств с собственного счёта пользователем с ролью ADMIN.")
@@ -250,7 +271,8 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 
     @DisplayName("Заблокированное снятие средств со счёта из-за отрицательной величины пополнения для пользователя с ролью USER.")
@@ -270,10 +292,11 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$").value("Amount should be more than 0"));
     }
 
-    @DisplayName("Заблокированное снятие средств со счёта из-за превышения лимита депозита для пользователея с ролью USER.")
+    @DisplayName("Заблокированное снятие средств со счёта из-за превышения лимита депозита для пользователя с ролью USER.")
     @Test
     void withdrawFromAccount_postRequestWithWrongAmount_withUserRole_thenDepositNotWithdrawn() throws Exception {
         Account account = AccountUtils.getAccount(fromUser,accounts);
@@ -290,7 +313,10 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$")
+                        .value("Cannot withdraw "+invalidWithdrawalAmount+" "+account.getAccountCurrency())
+                );
     }
 
     @DisplayName("Заблокированное снятие средств со счёта из-за неправильного ID акаунта для пользователя с ролью USER.")
@@ -310,6 +336,7 @@ public class AccountControllerTest {
                         .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 }

@@ -96,7 +96,7 @@ public class UserControllerTest {
         }
     }
 
-    @DisplayName("Неуспешная попытка создания нового пользователя пользователем с ролью USER.")
+    @DisplayName("Заблокированная попытка создания нового пользователя пользователем с ролью USER.")
     @Test
     @WithMockUser(roles = "USER")
     void createUser_withUserRole_thenAccessForbidden() throws Exception {
@@ -107,7 +107,8 @@ public class UserControllerTest {
                         .content(json)
                 )
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$").doesNotExist());
     }
 
     @DisplayName("Создание нового пользователя пользователем с ролью ADMIN.")
@@ -117,20 +118,24 @@ public class UserControllerTest {
         long usersBefore = userRepository.count();
         int numberOfCreatedUsers = 1;
         User newUser = UserUtils.createSingleUniqueUser(users);
-        String json = objectMapper.writeValueAsString(newUser);
+        String requestJson = objectMapper.writeValueAsString(newUser);
 
         mockMvc.perform(post("/user/")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json)
+                        .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.username").value(newUser.getUsername()))
+                .andExpect(jsonPath("$.accounts").isNotEmpty())
+                .andExpect(jsonPath("$.accounts").isArray());
 
         long usersAfter = userRepository.count();
         assertEquals(usersBefore,usersAfter-numberOfCreatedUsers);
     }
 
-    @DisplayName("Неуспешная попытка создания существующего пользователя пользователем с ролью ADMIN.")
+    @DisplayName("Заблокированная попытка создания существующего пользователя пользователем с ролью ADMIN.")
     @Test
     @WithMockUser(roles = "ADMIN")
     void createUser_existedUser_withAdminRole_thenUserNotCreated() throws Exception {
@@ -145,7 +150,8 @@ public class UserControllerTest {
                         .content(json)
                 )
                 .andDo(print())
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$").doesNotExist());
 
         long usersAfter = userRepository.count();
 
@@ -165,13 +171,17 @@ public class UserControllerTest {
         long usersBefore = userRepository.count();
         int numberOfCreatedUsers = 1;
         User newUser = UserUtils.createSingleUniqueUser(users);
-        String json = objectMapper.writeValueAsString(newUser);
+        String requestJson = objectMapper.writeValueAsString(newUser);
         mockMvc.perform(post("/user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json)
+                        .content(requestJson)
                 )
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.username").value(newUser.getUsername()))
+                .andExpect(jsonPath("$.accounts").isNotEmpty())
+                .andExpect(jsonPath("$.accounts").isArray());
         long usersAfter = userRepository.count();
         assertEquals(usersBefore,usersAfter-numberOfCreatedUsers);
     }
@@ -190,7 +200,7 @@ public class UserControllerTest {
                 .andExpect(content().json(expectedJson));
     }
 
-    @DisplayName("Неуспешная попытка получения списка пользователей пользователем с ролью ADMIN.")
+    @DisplayName("Заблокированная попытка получения списка пользователей пользователем с ролью ADMIN.")
     @Test
     @WithMockUser(roles = "ADMIN")
     void getAllUsers_withAdminRole_thenAccessForbidden() throws Exception {
